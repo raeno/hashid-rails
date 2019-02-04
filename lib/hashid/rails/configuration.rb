@@ -7,7 +7,8 @@ module Hashid
                     :min_hash_length,
                     :alphabet,
                     :override_find,
-                    :sign_hashids
+                    :sign_hashids,
+                    :fallback_to_unsigned
 
       def initialize
         @salt = ""
@@ -17,6 +18,7 @@ module Hashid
                     "1234567890"
         @override_find = true
         @sign_hashids = true
+        @fallback_to_unsigned = false
       end
 
       def for_table(table_name)

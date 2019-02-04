@@ -105,12 +105,19 @@ module Hashid
         decoded_hashid = hashids.decode(id.to_s)
 
         if Hashid::Rails.configuration.sign_hashids
+          fallback_value = decoded_hashid.first || fallback_value if fallback_to_unsigned?(id)
+
           valid_hashid?(decoded_hashid) ? decoded_hashid.last : fallback_value
         else
           decoded_hashid.first || fallback_value
         end
       rescue Hashids::InputError
         fallback_value
+      end
+
+      # id should have at least one non-digit to avoid decoding DB ids
+      def fallback_to_unsigned?(id)
+        id.to_s =~ /\D+/ && Hashid::Rails.configuration.fallback_to_unsigned
       end
 
       def valid_hashid?(decoded_hashid)

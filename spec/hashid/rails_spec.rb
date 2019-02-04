@@ -117,6 +117,17 @@ describe Hashid::Rails do
         decoded_id = FakeModel.decode_id(100_117, fallback: true)
         expect(decoded_id).to eq(100_117)
       end
+
+      context 'when fallback to unsigned allowed' do
+        before do
+          Hashid::Rails.configure { |c| c.fallback_to_unsigned = true }
+        end
+
+        it "returns already decoded id" do
+          decoded_id = FakeModel.decode_id(100_117, fallback: true)
+          expect(decoded_id).to eq(100_117)
+        end
+      end
     end
 
     context "when an array" do
@@ -331,6 +342,33 @@ describe Hashid::Rails do
 
         expect(result).to eq(nil)
       end
+
+      context 'when unsigned fallback allowed' do
+        it 'finds model by unsigned hashid as well' do
+          model = FakeModel.create!
+          unsigned_hashid = model.hashid
+          Hashid::Rails.configuration.fallback_to_unsigned = true
+
+          result = FakeModel.find_by_hashid(unsigned_hashid)
+          expect(result).to eq(model)
+        end
+
+        it 'returns nil when unable to find model both by signed and unsigned hashid' do
+          Hashid::Rails.configuration.fallback_to_unsigned = true
+          result = FakeModel.find_by_hashid("ABC")
+
+          expect(result).to eq(nil)
+        end
+
+        it 'returns nil for non-hashid' do
+          Hashid::Rails.configuration.fallback_to_unsigned = true
+          model = FakeModel.create!
+
+          result = FakeModel.find_by_hashid(model.id)
+
+          expect(result).to eq(nil)
+        end
+      end
     end
 
     describe ".find_by_hashid!" do
@@ -352,6 +390,32 @@ describe Hashid::Rails do
 
         expect { FakeModel.find_by_hashid!(model.id) }
           .to raise_error(ActiveRecord::RecordNotFound)
+      end
+
+      context 'when unsigned fallback allowed' do
+        it 'finds model by unsigned hashid as well' do
+          model = FakeModel.create!
+          unsigned_hashid = model.hashid
+          Hashid::Rails.configure { |c| c.fallback_to_unsigned = true }
+
+          result = FakeModel.find_by_hashid!(unsigned_hashid)
+          expect(result).to eq(model)
+        end
+
+        it 'raises record not found when unable to find model both by signed and unsigned hashid' do
+          Hashid::Rails.configure { |c| c.fallback_to_unsigned = true }
+
+          expect { FakeModel.find_by_hashid!("ABC") }
+            .to raise_error(ActiveRecord::RecordNotFound)
+        end
+
+        it 'returns nil for non-hashid' do
+          Hashid::Rails.configure { |c| c.fallback_to_unsigned = true }
+
+          model = FakeModel.create!
+          expect { FakeModel.find_by_hashid!(model.id) }
+            .to raise_error(ActiveRecord::RecordNotFound)
+        end
       end
     end
   end
@@ -380,6 +444,7 @@ describe Hashid::Rails do
         )
         expect(config.override_find).to eq(true)
         expect(config.sign_hashids).to eq(true)
+        expect(config.fallback_to_unsigned).to eq(false)
       end
 
       Hashid::Rails.configure do |configuration|
@@ -388,6 +453,7 @@ describe Hashid::Rails do
         configuration.alphabet = "ABC"
         configuration.override_find = false
         configuration.sign_hashids = false
+        configuration.fallback_to_unsigned = true
       end
 
       aggregate_failures "after config" do
@@ -396,6 +462,7 @@ describe Hashid::Rails do
         expect(config.alphabet).to eq("ABC")
         expect(config.override_find).to eq(false)
         expect(config.sign_hashids).to eq(false)
+        expect(config.fallback_to_unsigned).to eq(true)
       end
     end
   end
